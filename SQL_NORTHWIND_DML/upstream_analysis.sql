@@ -24,7 +24,7 @@ select
     p.units_on_order,
     p.reorder_level,
     p.discontinued,
-    c.category_name
+    c.category_name,
     s.company_name supplier_company_name,
     concat(s.contact_title, ' ', s.contact_name) supplier_PIC,
     concat(s.city, ' ', s.country) suppling_from
