@@ -12,6 +12,8 @@ SELECT
 FROM orders
 LIMIT 10;
 
+-- Upstream analysis:
+
 -- Order is processed by (employee being in charged)
 SELECT 
     o.order_id,

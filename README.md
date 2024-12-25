@@ -6,7 +6,7 @@
 3. Nguyen Ngoc Van Quynh - 21070076
 
 ## Preparation:
-1. Create a new postgresql for the testing the database locally
+1. Create a new POSTGRESQL for the testing the database locally
 2. 
 
 ## 1. Side note:
