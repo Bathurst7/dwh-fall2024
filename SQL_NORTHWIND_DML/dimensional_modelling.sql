@@ -179,7 +179,3 @@ LEFT JOIN dim_customers dc
 GROUP BY dc.customer_id, dc.customer_name
 ORDER BY recency, frequency DESC, monetary DESC;
 
-select max(order_date)
-from orders
-
-select current_date
