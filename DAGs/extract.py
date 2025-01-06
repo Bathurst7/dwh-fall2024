@@ -11,9 +11,12 @@ from airflow.hooks.base_hook import BaseHook
 # Set up logging
 logger = logging.getLogger('airflow.task')
 
+pg_conn = 'cloudsql_postgres_conn'
+gcp_conn = 'google_cloud_default'
+
 # Define connection parameters for PostgreSQL connection
 def get_postgresql_connection():
-    conn = BaseHook.get_connection('cloudsql_postgres_conn')  # Using Airflow connection named 'cloudsql_postgres_conn'
+    conn = BaseHook.get_connection(pg_conn)
     user_name = conn.login
     password = conn.password
     ip = conn.host
@@ -95,7 +98,7 @@ def get_avro_schema(df, data_type_to_avro, table_name, namespace=None, doc=None)
 # Function to upload file to Google Cloud Storage
 def upload_to_gcs(bucket_name, filename, destination_object):
     try:
-        hook = GCSHook(gcp_conn_id='google_cloud_default')  # Use the Airflow connection to GCP
+        hook = GCSHook(gcp_conn_id=gcp_conn)  # Use the Airflow connection to GCP
         logger.info(f"Attempting to upload {filename} to {bucket_name}/{destination_object}...")
         
         # Upload file to GCS
@@ -161,9 +164,9 @@ with DAG(
 ) as dag:
 
     # Define the task to run the extraction and upload function
-    extract_and_upload_task = PythonOperator(
+    extract = PythonOperator(
         task_id='extract_and_upload_to_gcs',
         python_callable=extract_and_upload_to_gcs
     )
 
-    extract_and_upload_task
+    extract
