@@ -248,9 +248,9 @@ default_args = {
 
 # Define the DAG
 with DAG(
-    dag_id = 'extract',
+    dag_id = 'extract_load_dag',
     default_args=default_args,
-    description='Extract data from PostgreSQL and upload to Google Cloud Storage',
+    description='Extract data from PostgreSQL to Google Cloud Storage, then load to BigQuery',
     start_date=datetime(2025, 1, 1),
     schedule_interval='@daily',
     catchup=False,
