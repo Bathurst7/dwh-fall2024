@@ -38,7 +38,7 @@ with DAG(
               region
             FROM 
               `northwind.suppliers`
-            );
+            )
         """,
         "dim_products": f"""
             CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_products` AS (
@@ -54,7 +54,7 @@ with DAG(
               LEFT JOIN 
                 `northwind.categories` AS c
                 ON p.category_id = c.category_id
-            );
+            )
         """,
         "dim_customers": f"""
             CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_customers` AS (
@@ -67,7 +67,7 @@ with DAG(
               region
             FROM
               `northwind.customers`
-            );
+            )
         """,
         "dim_employees": f"""
             CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_employees` AS (
@@ -90,7 +90,7 @@ with DAG(
                 `northwind.region` AS r
                 ON t.region_id = r.region_id
             GROUP BY 1, 2, 3, 4
-            );
+            )
         """,
         "dim_date": f"""
             CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_date` AS (
@@ -119,7 +119,7 @@ with DAG(
             FROM 
               date_sequence, 
               UNNEST(dates) AS d
-            );
+            )
         """,
         "fact_table": f"""
             CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.fact_table` AS (
@@ -184,8 +184,8 @@ with DAG(
                 ON DATE(TIMESTAMP_MILLIS(o.required_date)) = dd_required.date -- Map required_date to date_id
               LEFT JOIN 
                 dim_date AS dd_shipped
-                ON DATE(TIMESTAMP_MILLIS(o.shipped_date)) = dd_shipped.date; -- Map shipped_date to date_id
-            );
+                ON DATE(TIMESTAMP_MILLIS(o.shipped_date)) = dd_shipped.date -- Map shipped_date to date_id
+            )
         """,
     }
     # Python function to execute queries
@@ -196,7 +196,6 @@ with DAG(
                     "query": query,
                     "useLegacySql": False,  # Use Standard SQL
                     "destinationTable": None,  # No destination table
-                    # "writeDisposition": "WRITE_TRUNCATE",  # Overwrite table if it exists
                 }
             }
 
