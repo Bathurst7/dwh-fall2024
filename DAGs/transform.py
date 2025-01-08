@@ -188,16 +188,21 @@ with DAG(
             );
         """,
     }
-
     # Python function to execute queries
     def execute_queries():
         for table_name, query in queries.items():
+            configuration = {
+                "query": {
+                    "query": query,
+                    "useLegacySql": False,  # Use Standard SQL
+                    "destinationTable": None,  # No destination table
+                    "writeDisposition": "WRITE_TRUNCATE",  # Overwrite table if it exists
+                }
+            }
+
             bigquery_operator = BigQueryInsertJobOperator(
                 task_id=f"create_replace_{table_name}",
-                sql=query,
-                use_legacy_sql=False,  # Use Standard SQL
-                destination_dataset_table=None,
-                write_disposition="WRITE_TRUNCATE",  # Overwrite table if it exists
+                configuration=configuration,
             )
             bigquery_operator.execute(context={})
 
