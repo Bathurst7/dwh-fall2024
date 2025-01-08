@@ -221,7 +221,7 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     schedule_interval='@daily',
     catchup=False,
-    tags='extract',
+    tags=['extract'],
 ) as dag:
     start = DummyOperator(task_id='start_extracting')
     task1 = PythonOperator(
