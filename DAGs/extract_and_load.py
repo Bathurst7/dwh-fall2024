@@ -19,22 +19,29 @@ import logging
 # import list of operators
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.providers.google.cloud.transfers.gcs_to_bigquery import GCSToBigQueryOperator
+from airflow.providers.google.cloud.operators.gcs import GCSListObjectsOperator
 
 # import hook methods
 from airflow.hooks.base_hook import BaseHook
 from airflow.providers.google.cloud.hooks.gcs import GCSHook
 
-# define the global variables:
+# define the global variables for extract and load:
 # 1. connection of postgresql
 pg_conn = 'cloudsql_postgres_conn'
 # 2. connection of google cloud
 gcp_conn = 'google_cloud_default'
 # 3. bucket name
 bucket_name = 'dwh-staging-area'
+# 4. project id
+project_id = 'dwh2024-fallsem'
+# 5. dataset id
+dataset_id = 'northwind'
 
 # set-up the logging method
 logger = logging.getLogger('airflow.task')
 
+# Extracting to the staging area task
 # Step 1: create the engine for the Postgresql connection
 def get_postgresql_connection(pg_conn):
     conn = BaseHook.get_connection(pg_conn)
@@ -205,6 +212,32 @@ def extract_and_upload_to_gcs(pg_conn, gcp_conn, bucket_name):
             logger.error(f"Upload failed: {e}")
             raise
 
+
+# Loading the data to Google BigQuery task
+def create_bigquery_tasks(prev_task, bucket_name, project_id, dataset_id,**kwargs):
+    # Get the file list from XCom
+    file_list = kwargs["ti"].xcom_pull(task_ids=prev_task)
+    
+    # Log the received file list
+    logger.info(f"Files received from GCS: {file_list}")
+    if not file_list:
+        raise ValueError("No files found in GCS bucket!")
+    else:
+        logger.info(f"Files found in GCS bucket!")
+        for file_name in file_list:
+            logger.info(f"Processing file: {file_name}")
+            table_name = file_name.split("/")[-1].replace(".avro", "")
+            logger.info(f"Target table: {table_name}")
+            GCSToBigQueryOperator(
+                task_id=f"load_{table_name}_to_bigquery",
+                bucket=bucket_name,
+                source_objects=[file_name],
+                destination_project_dataset_table=f"{project_id}.{dataset_id}.{table_name}",
+                source_format="AVRO",
+                write_disposition="WRITE_TRUNCATE",
+                gcp_conn_id=gcp_conn,
+            ).execute(kwargs)
+
 # Define the default arguments
 default_args = {
     "owner": "airflow",
@@ -221,13 +254,41 @@ with DAG(
     start_date=datetime(2025, 1, 1),
     schedule_interval='@daily',
     catchup=False,
-    tags=['extract'],
+    tags=['extract', 'load'],
 ) as dag:
-    start = DummyOperator(task_id='start_extracting')
-    task1 = PythonOperator(
-        task_id='task_1_extract_and_upload_to_gcs',
+    # task1: extract and upload to gcs
+    task1_id = 'task_1_extract_and_upload_to_gcs'
+    # task2: list files in gcs
+    task2_id = 'task_2_list_files'
+    # task3: load to bigquery
+    task3_id = 'task_3_load_to_bigquery'
+    
+    # Phase 1: Extracting data from PostgreSQL and uploading to Google Cloud Storage
+    start_extracting = DummyOperator(task_id='start_extracting')
+    
+    task_extract = PythonOperator(
+        task_id=task1_id,
         python_callable=extract_and_upload_to_gcs,
-        op_args=[pg_conn, gcp_conn, bucket_name]
+        op_args=[pg_conn, gcp_conn, bucket_name],
+        provide_context=True
     )
-    end = DummyOperator(task_id='end_extracting')
-    start >> task1 >> end
+    end_extracting = DummyOperator(task_id='end_extracting')
+    
+    # Phase 2: Loading data from Google Cloud Storage to Google BigQuery
+    start_loading = DummyOperator(task_id='start_loading')
+    
+    task_2_list_file = GCSListObjectsOperator(
+        task_id=task2_id,
+        bucket=bucket_name,
+        gcp_conn_id=gcp_conn
+    )
+    
+    task_3_loading = PythonOperator(
+        task_id=task3_id,
+        python_callable=create_bigquery_tasks,
+        op_args=[task2_id, bucket_name, project_id, dataset_id],
+        provide_context=True
+    )
+    
+    end_loading = DummyOperator(task_id='end_loading')
+    start_extracting >> task_extract >> end_extracting >> start_loading >> task_2_list_file >> task_3_loading >> end_loading
