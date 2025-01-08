@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.providers.google.cloud.operators.bigquery import BigQueryOperator
+from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
 from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 
@@ -12,25 +12,21 @@ default_args = {
     'retries': 1,
 }
 
-# Define the global variables
-project_id = 'dwh2024-fallsem'
-dataset_id = 'star_northwind'
-gcp_conn_id = 'google_cloud_default'
 # Define the DAG
 with DAG(
-    'transform',
+    'bigquery_create_replace_tables',
     default_args=default_args,
-    description='Create or replace tables in BigQuery using PythonOperator and BigQueryOperator',
+    description='Create or replace tables in BigQuery using PythonOperator and BigQueryInsertJobOperator',
     schedule_interval=None,
     start_date=days_ago(1),
     catchup=False,
 ) as dag:
 
-    # SQL queries for each table
+    # SQL queries for each table with parentheses properly added
     queries = {
-        "dim_suppliers": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_suppliers` AS
-            (SELECT
+        "dim_suppliers": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_suppliers` AS (
+            SELECT
               supplier_id,
               company_name,
               contact_name,
@@ -38,11 +34,12 @@ with DAG(
               country,
               region
             FROM 
-              `northwind.suppliers`)
+              `northwind.suppliers`
+            );
         """,
-        "dim_products": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_products` AS
-            (SELECT
+        "dim_products": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_products` AS (
+            SELECT
               p.product_id,
               p.product_name,
               c.category_name,
@@ -53,11 +50,12 @@ with DAG(
               `northwind.products` AS p
               LEFT JOIN 
                 `northwind.categories` AS c
-                ON p.category_id = c.category_id)
+                ON p.category_id = c.category_id
+            );
         """,
-        "dim_customers": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_customers` AS
-            (SELECT
+        "dim_customers": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_customers` AS (
+            SELECT
               customer_id,
               company_name,
               contact_name,
@@ -65,11 +63,12 @@ with DAG(
               country,
               region
             FROM
-              `northwind.customers`)
+              `northwind.customers`
+            );
         """,
-        "dim_employees": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_employees` AS
-            (SELECT
+        "dim_employees": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_employees` AS (
+            SELECT
               CONCAT(e.first_name, ' ', e.last_name) AS employee_full_name,
               e.title,
               e.hire_date,
@@ -87,11 +86,12 @@ with DAG(
               LEFT JOIN
                 `northwind.region` AS r
                 ON t.region_id = r.region_id
-            GROUP BY 1, 2, 3, 4)
+            GROUP BY 1, 2, 3, 4
+            );
         """,
-        "dim_date": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_date` AS
-            (WITH temp_orders AS (
+        "dim_date": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_date` AS (
+            WITH temp_orders AS (
               SELECT 
                 * EXCEPT (order_date, required_date, shipped_date),
                 TIMESTAMP_MILLIS(order_date) AS order_date,
@@ -115,11 +115,12 @@ with DAG(
               d AS date
             FROM 
               date_sequence, 
-              UNNEST(dates) AS d)
+              UNNEST(dates) AS d
+            );
         """,
-        "fact_table": f"""
-            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.fact_table` AS
-            (WITH temp_orders AS (
+        "fact_table": """
+            CREATE OR REPLACE TABLE `your_project.your_dataset.fact_table` AS (
+            WITH temp_orders AS (
               SELECT 
                 * EXCEPT (order_date, required_date, shipped_date),
                 TIMESTAMP_MILLIS(order_date) AS order_date,
@@ -180,21 +181,20 @@ with DAG(
                 ON DATE(TIMESTAMP_MILLIS(o.required_date)) = dd_required.date -- Map required_date to date_id
               LEFT JOIN 
                 dim_date AS dd_shipped
-                ON DATE(TIMESTAMP_MILLIS(o.shipped_date)) = dd_shipped.date -- Map shipped_date to date_id)
+                ON DATE(TIMESTAMP_MILLIS(o.shipped_date)) = dd_shipped.date; -- Map shipped_date to date_id
+            );
         """,
     }
 
     # Python function to execute queries
     def execute_queries():
         for table_name, query in queries.items():
-            bigquery_operator = BigQueryOperator(
+            bigquery_operator = BigQueryInsertJobOperator(
                 task_id=f"create_replace_{table_name}",
                 sql=query,
                 use_legacy_sql=False,  # Use Standard SQL
                 destination_dataset_table=None,
                 write_disposition="WRITE_TRUNCATE",  # Overwrite table if it exists
-                create_disposition="CREATE_IF_NEEDED",  # Create table if it does not exist
-                gcp_conn_id=gcp_conn_id,
             )
             bigquery_operator.execute(context={})
 
