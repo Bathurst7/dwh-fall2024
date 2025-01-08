@@ -12,6 +12,9 @@ default_args = {
     'retries': 1,
 }
 
+project_id = 'dwh2024-fallsem'
+dataset_id = 'star_northwind'
+
 # Define the DAG
 with DAG(
     'bigquery_create_replace_tables',
@@ -24,8 +27,8 @@ with DAG(
 
     # SQL queries for each table with parentheses properly added
     queries = {
-        "dim_suppliers": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_suppliers` AS (
+        "dim_suppliers": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_suppliers` AS (
             SELECT
               supplier_id,
               company_name,
@@ -37,8 +40,8 @@ with DAG(
               `northwind.suppliers`
             );
         """,
-        "dim_products": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_products` AS (
+        "dim_products": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_products` AS (
             SELECT
               p.product_id,
               p.product_name,
@@ -53,8 +56,8 @@ with DAG(
                 ON p.category_id = c.category_id
             );
         """,
-        "dim_customers": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_customers` AS (
+        "dim_customers": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_customers` AS (
             SELECT
               customer_id,
               company_name,
@@ -66,8 +69,8 @@ with DAG(
               `northwind.customers`
             );
         """,
-        "dim_employees": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_employees` AS (
+        "dim_employees": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_employees` AS (
             SELECT
               CONCAT(e.first_name, ' ', e.last_name) AS employee_full_name,
               e.title,
@@ -89,8 +92,8 @@ with DAG(
             GROUP BY 1, 2, 3, 4
             );
         """,
-        "dim_date": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.dim_date` AS (
+        "dim_date": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.dim_date` AS (
             WITH temp_orders AS (
               SELECT 
                 * EXCEPT (order_date, required_date, shipped_date),
@@ -118,8 +121,8 @@ with DAG(
               UNNEST(dates) AS d
             );
         """,
-        "fact_table": """
-            CREATE OR REPLACE TABLE `your_project.your_dataset.fact_table` AS (
+        "fact_table": f"""
+            CREATE OR REPLACE TABLE `{project_id}.{dataset_id}.fact_table` AS (
             WITH temp_orders AS (
               SELECT 
                 * EXCEPT (order_date, required_date, shipped_date),
