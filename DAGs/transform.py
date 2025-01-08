@@ -189,7 +189,7 @@ with DAG(
         """,
     }
     # Python function to execute queries
-    def execute_queries():
+    def execute_queries(**kwargs):
         for table_name, query in queries.items():
             configuration = {
                 "query": {
@@ -204,12 +204,13 @@ with DAG(
                 task_id=f"create_replace_{table_name}",
                 configuration=configuration,
             )
-            bigquery_operator.execute(context={})
+            bigquery_operator.execute(context=kwargs)
 
     # Define the PythonOperator to loop through the queries and execute them
     create_tables_task = PythonOperator(
         task_id='create_replace_all_tables',
         python_callable=execute_queries,
+        provide_context=True,
     )
 
     create_tables_task
