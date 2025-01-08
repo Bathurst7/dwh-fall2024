@@ -196,7 +196,7 @@ with DAG(
                     "query": query,
                     "useLegacySql": False,  # Use Standard SQL
                     "destinationTable": None,  # No destination table
-                    "writeDisposition": "WRITE_TRUNCATE",  # Overwrite table if it exists
+                    # "writeDisposition": "WRITE_TRUNCATE",  # Overwrite table if it exists
                 }
             }
 
